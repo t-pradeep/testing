@@ -7,9 +7,8 @@ spring:
 
 gitlab:
   api:
-    credentials:
-      url: https://gitlab.example.com/api/v4  # Replace with your GitLab instance URL
-      token: YOUR_PRIVATE_ACCESS_TOKEN       # Replace with your token
+    baseUrl: https://gitlab.example.com/api/v4  # Replace with your GitLab instance URL
+    privateToken: YOUR_PRIVATE_ACCESS_TOKEN       # Replace with your token
   webhook:
     target-branches: main,develop
     api-spec-files: 

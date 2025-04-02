@@ -21,41 +21,21 @@ public class WebClientConfig {
 
     @Bean(name = "gitlabWebClient")
     public WebClient gitlabWebClient(WebClient.Builder webClientBuilder) {
-        if (!StringUtils.hasText(properties.getCredentials().getUrl()) || 
-            !StringUtils.hasText(properties.getCredentials().getToken())) {
+        if (!StringUtils.hasText(properties.getBaseUrl()) ||
+            !StringUtils.hasText(properties.getPrivateToken())) {
             log.error("GitLab API URL or Token is not configured.");
             throw new IllegalStateException("GitLab API credentials must be configured.");
         }
 
-        log.info("Configuring WebClient for GitLab API: {}", properties.getCredentials().getUrl());
+        log.info("Configuring WebClient for GitLab API: {}", properties.getBaseUrl());
 
         return webClientBuilder
-                .baseUrl(properties.getCredentials().getUrl())
+                .baseUrl(properties.getBaseUrl())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, "application/json")
-                .defaultHeader("PRIVATE-TOKEN", properties.getCredentials().getToken())
-                .filter(logRequest())
-                .filter(logResponse())
+                .defaultHeader("PRIVATE-TOKEN", properties.getPrivateToken())
+                // Removed debug logging filters
                 .build();
     }
 
-    private ExchangeFilterFunction logRequest() {
-        return ExchangeFilterFunction.ofRequestProcessor(clientRequest -> {
-            log.debug("GitLab API Request: {} {}", clientRequest.method(), clientRequest.url());
-            clientRequest.headers().forEach((name, values) -> {
-                if (!name.equalsIgnoreCase("PRIVATE-TOKEN")) {
-                    values.forEach(value -> log.debug("  {}: {}", name, value));
-                } else {
-                    log.debug("  {}: *****", name);
-                }
-            });
-            return Mono.just(clientRequest);
-        });
-    }
-
-    private ExchangeFilterFunction logResponse() {
-        return ExchangeFilterFunction.ofResponseProcessor(clientResponse -> {
-            log.debug("GitLab API Response Status: {}", clientResponse.statusCode());
-            return Mono.just(clientResponse);
-        });
-    }
+    // Removed logRequest() and logResponse() methods
 }

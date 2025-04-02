@@ -26,37 +26,45 @@ public class VersionExtractor {
         this.pomReader = pomReader;
     }
 
-    public String extractPomVersion(String pomContent) throws Exception {
+    public String extractPomVersion(String pomContent) throws VersionExtractionException { // Use custom exception
         try (InputStreamReader reader = new InputStreamReader(
             new ByteArrayInputStream(pomContent.getBytes(StandardCharsets.UTF_8)))) {
-            
+
             Model model = pomReader.read(reader);
             String version = model.getVersion();
-            return version != null ? version : 
-                   model.getParent() != null ? model.getParent().getVersion() : 
-                   UNKNOWN_VERSION;
+            // Handle potential null parent or parent version gracefully
+            String parentVersion = (model.getParent() != null) ? model.getParent().getVersion() : null;
+            
+            if (version != null) {
+                return version;
+            } else if (parentVersion != null) {
+                return parentVersion;
+            } else {
+                 // Explicitly return unknown if neither is found, avoid throwing exception for this case
+                return UNKNOWN_VERSION;
+            }
         } catch (IOException | XmlPullParserException e) {
-            throw new Exception("Failed to parse pom.xml: " + e.getMessage(), e);
+            throw new VersionExtractionException("Failed to parse pom.xml: " + e.getMessage(), e); // Use custom exception
         }
     }
 
-    public String extractApiSpecVersion(String specContent, String filePath) throws Exception {
+    public String extractApiSpecVersion(String specContent, String filePath) throws VersionExtractionException { // Use custom exception
         try {
             JsonNode rootNode = yamlMapper.readTree(specContent);
             JsonNode infoNode = rootNode.path(YAML_INFO_FIELD);
-            
+
             if (infoNode.isMissingNode()) {
-                throw new Exception("Missing 'info' field in API spec");
+                throw new VersionExtractionException("Missing 'info' field in API spec: " + filePath); // Use custom exception
             }
-            
+
             JsonNode versionNode = infoNode.path(YAML_VERSION_FIELD);
             if (versionNode.isMissingNode() || !versionNode.isTextual()) {
-                throw new Exception("Missing or invalid version field in API spec");
+                 throw new VersionExtractionException("Missing or invalid 'version' field under 'info' in API spec: " + filePath); // Use custom exception
             }
-            
+
             return versionNode.asText();
         } catch (IOException e) {
-            throw new Exception("Failed to parse API spec YAML: " + e.getMessage(), e);
+            throw new VersionExtractionException("Failed to parse API spec YAML '" + filePath + "': " + e.getMessage(), e); // Use custom exception
         }
     }
 }

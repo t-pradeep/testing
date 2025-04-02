@@ -28,9 +28,9 @@ public class GitLabApiClientImpl implements GitLabApiClient {
     private final WebClient webClient;
 
     @Override
-    public Mono<MergeRequestChanges> getMergeRequestChanges(Long projectId, Long mergeRequestIid) { // Correct return type
+    public Mono<MergeRequestChanges> getMergeRequestChanges(Long projectId, Long mergeRequestIid) {
         String uri = String.format(MERGE_REQUEST_CHANGES_URI, projectId, mergeRequestIid);
-        log.debug("Fetching MR changes from URI: {}", uri);
+        // Removed debug log
 
         return webClient.get()
                 .uri(uri)
@@ -47,11 +47,9 @@ public class GitLabApiClientImpl implements GitLabApiClient {
                     return Mono.empty(); // Return empty on error
                 })
                 .doOnSuccess(changes -> {
+                    // Removed debug log for successful fetch count
                     if (changes == null) {
                         log.warn("Received null changes response for MR !{} in project {}", mergeRequestIid, projectId);
-                    } else {
-                        log.debug("Successfully fetched {} changes for MR !{} in project {}",
-                                changes.changes() != null ? changes.changes().size() : 0, mergeRequestIid, projectId);
                     }
                 });
     }
@@ -63,7 +61,7 @@ public class GitLabApiClientImpl implements GitLabApiClient {
         String uri = String.format(REPOSITORY_FILES_URI, projectId, encodedFilePath, ref);
         String shortSha = ref != null && ref.length() >= 8 ? ref.substring(0, 8) : ref;
 
-        log.debug("Fetching file content: project={}, path={}, ref={}", projectId, filePath, shortSha);
+        // Removed debug log
 
         return webClient.get()
                 .uri(uri)
@@ -74,21 +72,18 @@ public class GitLabApiClientImpl implements GitLabApiClient {
                             log.warn("File not found via GitLab API: project={}, path={}, ref={}", projectId, filePath, shortSha);
                             return Mono.empty(); // Handled by downstream logic (e.g., defaultIfEmpty)
                         })
-                .onStatus(HttpStatus::isError, clientResponse ->
-                        // Handle other errors by logging and returning an error signal
-                        clientResponse.bodyToMono(String.class)
-                                .flatMap(body -> {
+                .onStatus(status -> status.isError(), clientResponse -> // Function must return Mono<? extends Throwable>
+                        clientResponse.bodyToMono(String.class) // Get the error body
+                                .defaultIfEmpty("[Empty error body]") // Provide default if body is empty
+                                .flatMap(body -> { // Use flatMap to ensure we return Mono<Throwable>
                                     String errorMessage = String.format("GitLab API error %s fetching file: project=%d, path=%s, ref=%s. Body: %s",
                                             clientResponse.statusCode(), projectId, filePath, shortSha, body);
                                     log.error(errorMessage);
+                                    // Create and wrap the exception in Mono.error
                                     return Mono.error(new GitLabApiException(errorMessage, clientResponse.statusCode()));
                                 })
-                                .switchIfEmpty(Mono.error(new GitLabApiException( // Handle cases where error body is empty
-                                        String.format("GitLab API error %s fetching file: project=%d, path=%s, ref=%s. Empty response body.",
-                                                clientResponse.statusCode(), projectId, filePath, shortSha),
-                                        clientResponse.statusCode())))
                 )
-                .bodyToMono(GitLabFileContent.class)
+                .bodyToMono(FileContent.class) // Use the imported ApiResponses.FileContent
                 .flatMap(fileContent -> decodeFileContent(fileContent, filePath))
                 .onErrorResume(GitLabApiException.class, e -> {
                     // Errors handled by onStatus are caught here, just return empty
@@ -111,7 +106,7 @@ public class GitLabApiClientImpl implements GitLabApiClient {
         try {
             byte[] decodedBytes = Base64.getDecoder().decode(fileContent.content());
             String content = new String(decodedBytes, StandardCharsets.UTF_8);
-            log.debug("Successfully decoded content for file '{}'", filePath);
+            // Removed debug log for successful decoding
             return Mono.just(content);
         } catch (IllegalArgumentException e) {
             log.error("Failed to decode Base64 content for file '{}': {}", filePath, e.getMessage());
@@ -122,14 +117,14 @@ public class GitLabApiClientImpl implements GitLabApiClient {
 
     // Custom exception class for GitLab API errors
     public static class GitLabApiException extends RuntimeException {
-        private final HttpStatus statusCode;
+        private final org.springframework.http.HttpStatusCode statusCode; // Use HttpStatusCode
 
-        public GitLabApiException(String message, HttpStatus statusCode) {
+        public GitLabApiException(String message, org.springframework.http.HttpStatusCode statusCode) { // Use HttpStatusCode
             super(message);
             this.statusCode = statusCode;
         }
 
-        public HttpStatus getStatusCode() {
+        public org.springframework.http.HttpStatusCode getStatusCode() { // Use HttpStatusCode
             return statusCode;
         }
     }
