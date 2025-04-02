@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream; // Add import for Stream
 
 @Slf4j
 @Component
@@ -41,11 +42,15 @@ public class FileChangeAnalyzer {
             return Collections.emptyList();
         }
 
+        // Use flatMap to handle path selection and null filtering more robustly
         return changes.changes().stream()
-            .map(change -> Objects.requireNonNullElse(change.newPath(), change.oldPath()))
-            .filter(Objects::nonNull)
-            .filter(apiSpecFiles::contains)
+            .filter(Objects::nonNull) // Ensure Change object is not null
+            .flatMap(change -> {
+                String path = change.newPath() != null ? change.newPath() : change.oldPath();
+                // If path is non-null and contained in the set, stream it, otherwise stream empty
+                return (path != null && apiSpecFiles.contains(path)) ? Stream.of(path) : Stream.empty();
+            })
             .distinct()
-            .collect(Collectors.toList());
+            .collect(Collectors.toList()); // Revert to Collectors.toList() for better type inference compatibility
     }
 }

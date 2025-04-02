@@ -24,16 +24,17 @@ public class MergeRequestValidator {
     }
 
     private boolean isValidEvent(MergeRequestEvent event) {
-        Predicate<MergeRequestEvent> isValid = e -> 
-            "merge_request".equals(e.objectKind()) && 
-            e.attributes() != null &&
-            e.attributes().lastCommit() != null &&
-            StringUtils.hasText(e.attributes().lastCommit().id()) &&
-            e.attributes().targetProjectId() != null &&
-            e.attributes().iid() != null;
+        // Combine checks directly
+        boolean valid = event != null &&
+                        "merge_request".equals(event.objectKind()) &&
+                        event.attributes() != null &&
+                        event.attributes().lastCommit() != null &&
+                        StringUtils.hasText(event.attributes().lastCommit().id()) &&
+                        event.attributes().targetProjectId() != null &&
+                        event.attributes().iid() != null;
 
-        if (!isValid.test(event)) {
-            log.warn("Skipping event: Invalid object_kind or missing required fields");
+        if (!valid) {
+            log.warn("Skipping event: Invalid object_kind or missing required fields. Event: {}", event); // Log event for context
             return false;
         }
         return true;
@@ -49,9 +50,11 @@ public class MergeRequestValidator {
     }
 
     private boolean hasValidTargetBranch(MergeRequestEvent event) {
-        if (!targetBranches.contains(event.attributes().targetBranch())) {
-            log.info("Skipping MR !{}: Target branch '{}' not in configured list",
-                event.attributes().iid(), event.attributes().targetBranch());
+        String targetBranch = event.attributes().targetBranch();
+        // Add null check for targetBranch
+        if (targetBranch == null || !targetBranches.contains(targetBranch)) {
+            log.info("Skipping MR !{}: Target branch '{}' is null or not in configured list {}",
+                event.attributes().iid(), targetBranch, targetBranches);
             return false;
         }
         return true;

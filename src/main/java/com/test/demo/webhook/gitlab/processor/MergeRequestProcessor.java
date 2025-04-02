@@ -37,6 +37,10 @@ public class MergeRequestProcessor {
                 return mergeRequestService.processMergeRequest(event, specFilePath);
             })
             .doOnError(e -> log.error("Error processing MR !{}: {}", event.attributes().iid(), e.getMessage(), e))
+            .onErrorResume(e -> {
+                // Ensure completion even if the service fails (error is already logged)
+                return Mono.empty(); 
+            })
             .then(); // Ensure the final result is Mono<Void>
     }
 }

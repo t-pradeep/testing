@@ -48,23 +48,31 @@ public class VersionExtractor {
         }
     }
 
-    public String extractApiSpecVersion(String specContent, String filePath) throws VersionExtractionException { // Use custom exception
+    public String extractApiSpecVersion(String specContent, String filePath) throws VersionExtractionException {
         try {
             JsonNode rootNode = yamlMapper.readTree(specContent);
             JsonNode infoNode = rootNode.path(YAML_INFO_FIELD);
 
             if (infoNode.isMissingNode()) {
-                throw new VersionExtractionException("Missing 'info' field in API spec: " + filePath); // Use custom exception
+                throw new VersionExtractionException("Missing 'info' field in API spec: " + filePath);
             }
 
             JsonNode versionNode = infoNode.path(YAML_VERSION_FIELD);
             if (versionNode.isMissingNode() || !versionNode.isTextual()) {
-                 throw new VersionExtractionException("Missing or invalid 'version' field under 'info' in API spec: " + filePath); // Use custom exception
+                 throw new VersionExtractionException("Missing or invalid 'version' field under 'info' in API spec: " + filePath);
             }
 
             return versionNode.asText();
-        } catch (IOException e) {
-            throw new VersionExtractionException("Failed to parse API spec YAML '" + filePath + "': " + e.getMessage(), e); // Use custom exception
+        } catch (Exception e) {
+            // Handle both direct IOExceptions and RuntimeExceptions wrapping IOExceptions
+            Throwable cause = e;
+            while (cause != null && !(cause instanceof IOException)) {
+                cause = cause.getCause();
+            }
+            if (cause instanceof IOException) {
+                throw new VersionExtractionException("Failed to parse API spec YAML '" + filePath + "': " + cause.getMessage(), (IOException) cause);
+            }
+            throw new VersionExtractionException("Unexpected error parsing API spec YAML '" + filePath + "': " + e.getMessage(), e);
         }
     }
 }
