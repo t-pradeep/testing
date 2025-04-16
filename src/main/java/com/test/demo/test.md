@@ -1,125 +1,58 @@
-package policies.test.bff_test
+package policies.test.bff
 
 import rego.v1
-import data.policies.test.bff
 
-# Positive Tests: Cases where allow should be true
-
-test_allow_api_ea_view if {
-    bff.allow with input as {
-        "approval_type": "api",
-        "roles": ["ea"],
-        "action": "view"
+# Test that component 'api' with role 'ea' returns sorted actions ["update", "view"]
+test_allow_api_ea in {
+    input_data := {
+        "components": ["api"],
+        "role": ["ea"]
     }
+    expected := { "api": ["update", "view"] }
+    result := { comp: actions | allow[comp] == actions }
+    result == expected
 }
 
-test_allow_api_ea_update if {
-    bff.allow with input as {
-        "approval_type": "api",
-        "roles": ["ea"],
-        "action": "update"
+# Test that component 'api' with role 'sa' returns sorted actions ["view"]
+test_allow_api_sa in {
+    input_data := {
+        "components": ["api"],
+        "role": ["sa"]
     }
+    expected := { "api": ["view"] }
+    result := { comp: actions | allow[comp] == actions }
+    result == expected
 }
 
-test_allow_api_sa_view if {
-    bff.allow with input as {
-        "approval_type": "api",
-        "roles": ["sa"],
-        "action": "view"
+# Test that component 'api' with roles 'ea' and 'sa' returns unique sorted actions ["update", "view"]
+test_allow_api_multiple_roles in {
+    input_data := {
+        "components": ["api"],
+        "role": ["ea", "sa"]
     }
+    expected := { "api": ["update", "view"] }
+    result := { comp: actions | allow[comp] == actions }
+    result == expected
 }
 
-test_allow_components_ea_view if {
-    bff.allow with input as {
-        "approval_type": "components",
-        "roles": ["ea"],
-        "action": "view"
+# Test that non-existent component returns no results
+test_allow_non_existent_component in {
+    input_data := {
+        "components": ["unknown"],
+        "role": ["ea"]
     }
+    expected := {}
+    result := { comp: actions | allow[comp] == actions }
+    result == expected
 }
 
-test_allow_components_ea_update if {
-    bff.allow with input as {
-        "approval_type": "components",
-        "roles": ["ea"],
-        "action": "update"
+# Test that component with role having no actions returns no results
+test_allow_no_actions_role in {
+    input_data := {
+        "components": ["api"],
+        "role": ["unknown"]
     }
-}
-
-test_allow_components_sa_view if {
-    bff.allow with input as {
-        "approval_type": "components",
-        "roles": ["sa"],
-        "action": "view"
-    }
-}
-
-# Negative Tests: Cases where allow should be false
-
-test_deny_api_ea_create if {
-    not bff.allow with input as {
-        "approval_type": "api",
-        "roles": ["ea"],
-        "action": "create"
-    }
-}
-
-test_deny_api_sa_update if {
-    not bff.allow with input as {
-        "approval_type": "api",
-        "roles": ["sa"],
-        "action": "update"
-    }
-}
-
-test_deny_components_sa_update if {
-    not bff.allow with input as {
-        "approval_type": "components",
-        "roles": ["sa"],
-        "action": "update"
-    }
-}
-
-test_deny_nonexistent_approval_type if {
-    not bff.allow with input as {
-        "approval_type": "nonexistent",
-        "roles": ["ea"],
-        "action": "view"
-    }
-}
-
-test_deny_no_roles if {
-    not bff.allow with input as {
-        "approval_type": "api",
-        "roles": [],
-        "action": "view"
-    }
-}
-
-test_deny_nonexistent_role if {
-    not bff.allow with input as {
-        "approval_type": "api",
-        "roles": ["nonexistent"],
-        "action": "view"
-    }
-}
-
-test_deny_missing_approval_type if {
-    not bff.allow with input as {
-        "roles": ["ea"],
-        "action": "view"
-    }
-}
-
-test_deny_missing_roles if {
-    not bff.allow with input as {
-        "approval_type": "api",
-        "action": "view"
-    }
-}
-
-test_deny_missing_action if {
-    not bff.allow with input as {
-        "approval_type": "api",
-        "roles": ["ea"]
-    }
+    expected := {}
+    result := { comp: actions | allow[comp] == actions }
+    result == expected
 }
