@@ -1,58 +1,47 @@
-package policies.test.bff
+package policies.test.bff_test
 
-import rego.v1
+import data.policies.test.bff
 
-# Test that component 'api' with role 'ea' returns sorted actions ["update", "view"]
-test_allow_api_ea in {
-    input_data := {
-        "components": ["api"],
-        "role": ["ea"]
-    }
-    expected := { "api": ["update", "view"] }
-    result := { comp: actions | allow[comp] == actions }
-    result == expected
+test_api_ea {
+  result := bff.allow with input as { "components": ["api"], "role": ["ea"] }
+  result == { "api": ["update", "view"] }
 }
 
-# Test that component 'api' with role 'sa' returns sorted actions ["view"]
-test_allow_api_sa in {
-    input_data := {
-        "components": ["api"],
-        "role": ["sa"]
-    }
-    expected := { "api": ["view"] }
-    result := { comp: actions | allow[comp] == actions }
-    result == expected
+test_api_sa {
+  result := bff.allow with input as { "components": ["api"], "role": ["sa"] }
+  result == { "api": ["view"] }
 }
 
-# Test that component 'api' with roles 'ea' and 'sa' returns unique sorted actions ["update", "view"]
-test_allow_api_multiple_roles in {
-    input_data := {
-        "components": ["api"],
-        "role": ["ea", "sa"]
-    }
-    expected := { "api": ["update", "view"] }
-    result := { comp: actions | allow[comp] == actions }
-    result == expected
+test_api_ea_sa {
+  result := bff.allow with input as { "components": ["api"], "role": ["ea", "sa"] }
+  result == { "api": ["update", "view"] }
 }
 
-# Test that non-existent component returns no results
-test_allow_non_existent_component in {
-    input_data := {
-        "components": ["unknown"],
-        "role": ["ea"]
-    }
-    expected := {}
-    result := { comp: actions | allow[comp] == actions }
-    result == expected
+test_components_ea {
+  result := bff.allow with input as { "components": ["components"], "role": ["ea"] }
+  result == { "components": ["update", "view"] }
 }
 
-# Test that component with role having no actions returns no results
-test_allow_no_actions_role in {
-    input_data := {
-        "components": ["api"],
-        "role": ["unknown"]
-    }
-    expected := {}
-    result := { comp: actions | allow[comp] == actions }
-    result == expected
+test_nonexistent_component {
+  result := bff.allow with input as { "components": ["nonexistent"], "role": ["ea"] }
+  result == { "nonexistent": [] }
+}
+
+test_no_components {
+  result := bff.allow with input as { "components": [], "role": ["ea"] }
+  result == {}
+}
+
+test_no_roles {
+  result := bff.allow with input as { "components": ["api"], "role": [] }
+  result == { "api": [] }
+}
+
+test_multiple_components {
+  result := bff.allow with input as { "components": ["api", "components"], "role": ["ea", "sa"] }
+  expected := {
+    "api": ["update", "view"],
+    "components": ["update", "view"]
+  }
+  result == expected
 }
